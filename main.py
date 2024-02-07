@@ -65,21 +65,18 @@ class BookShop:
         self.session.add_all(list_data)
         self.session.commit()
 
-    def publisher_output(self, search):
-        for sel_stock in (self.session.query(Stock).join(Book).join(Publisher).
-                          filter(Publisher.name.ilike(f'%{search}%')).all()):
-            sql_query = (self.session.query(Sale).join(Stock).
-                         filter(Sale.stock == sel_stock).all())
-            if len(sql_query) > 0:
-                for sel_sale in sql_query: 
-                    print("{0:<40s} | {1:<10s} | {2:^8f} | {3:^10s}".
-                        format(sel_stock.book.title, sel_stock.shop.name,
-                                sel_sale.price*sel_sale.count,
-                                sel_sale.date_sale.strftime("%d.%m.%y %H:%M")))      
-            else:
-                print("{0:<40s} | {1:<10s} | {2:^8s} | {3:^10s}".
-                    format(sel_stock.book.title,
-                            sel_stock.shop.name, 'None', 'None')) 
+    def get_shops(self, search):
+        sql_query = self.session.query(Book.title, Shop.name,
+                                       Sale.price*Sale.count, Sale.date_sale)
+        sql_query = sql_query.select_from(Shop)
+        sql_query = sql_query.join(Stock).join(Book).join(Publisher).join(Sale)
+        if search.isdigit():
+            sql_query = sql_query.filter(Publisher.id == search).all()
+        else:
+            sql_query = sql_query.filter(Publisher.name == search).all()    
+        for sqls in sql_query:
+            print(f"{sqls[0] : <40} | {sqls[1] : <10} | {sqls[2] : <8} | "
+                  f"{sqls[3].strftime('%d-%m-%Y')}")
 
 
 if __name__ == '__main__':
@@ -89,7 +86,7 @@ if __name__ == '__main__':
     book_shop.open_session()
 
     book_shop.load_data('tests_data.json')
-    search = input('Введите строку поиска по "Издателю": ')
-    book_shop.publisher_output(search)
+    search = input('Введите имя или id "Издателя": ')
+    book_shop.get_shops(search)
 
     book_shop.close_session()
